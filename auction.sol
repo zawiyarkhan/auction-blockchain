@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0
-
 pragma solidity >=0.8.2 <0.9.0;
 
 contract DecentralizedAuction {
@@ -8,6 +7,7 @@ contract DecentralizedAuction {
     address public highestBidder;
 
     mapping(address => uint) public bids;
+    address[] public participantAddresses;  // Initialize the participantAddresses array
 
     uint public minBidIncrement;
 
@@ -45,6 +45,19 @@ contract DecentralizedAuction {
             highestBidder = msg.sender;
             highestBindingBid = currentBid;
         }
+
+        // Update or add the participant address to the array
+        bool participantExists = false;
+        for (uint i = 0; i < participantAddresses.length; i++) {
+            if (participantAddresses[i] == msg.sender) {
+                participantExists = true;
+                break;
+            }
+        }
+
+        if (!participantExists) {
+            participantAddresses.push(msg.sender);
+        }
     }
 
     function finalizeAuction() external onlyOwner onlyAfterEnd {
@@ -53,9 +66,11 @@ contract DecentralizedAuction {
 
         payable(owner).transfer(highestBindingBid);
 
-        for (uint i = 0; i < msg.sender.balance; i++) {
-            address withdrawer = msg.sender;
+        // Refund participants
+        for (uint i = 0; i < participantAddresses.length; i++) {
+            address withdrawer = participantAddresses[i];
             uint amount = bids[withdrawer];
+
             if (amount > 0) {
                 bids[withdrawer] = 0;
                 payable(withdrawer).transfer(amount);
@@ -67,9 +82,11 @@ contract DecentralizedAuction {
         require(!ended, "Auction has already been finalized");
         ended = true;
 
-        for (uint i = 0; i < msg.sender.balance; i++) {
-            address withdrawer = msg.sender;
+        // Refund participants
+        for (uint i = 0; i < participantAddresses.length; i++) {
+            address withdrawer = participantAddresses[i];
             uint amount = bids[withdrawer];
+
             if (amount > 0) {
                 bids[withdrawer] = 0;
                 payable(withdrawer).transfer(amount);
